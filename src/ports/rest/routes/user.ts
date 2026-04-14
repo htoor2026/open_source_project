@@ -1,66 +1,78 @@
-import express, { NextFunction, Response, Request } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { User } from "../../../infrastructure/mongodb/models/user";
 
 const router = express.Router();
 
-const userDb: any = []; // mock database
+// POST /user/create
+router.post("/create", async (req: Request, res: Response, _next: NextFunction) => {
+  try {
+    const { userName, userPassword, role } = req.body;
 
-router.post("/create", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const userName = req.body.userName;
-        const userPassword = req.body.userPassword;
-    
-        const salt = await bcrypt.genSalt(); 
-        const hashedPassword = await bcrypt.hash(userPassword, salt);
-    
-        const createUser = {
-            userName: userName,
-            userPassword: hashedPassword
-        };
-    
-        userDb.push(createUser);
+    const existing = await User.findOne({ username: userName });
+    if (existing) {
+      res.status(409).json({ message: "Username already exists" });
+      return;
+    }
 
-        res.status(200).json(createUser);
+    const passwordHash = await bcrypt.hash(userPassword, 10);
 
+    const user = await User.create({
+      username: userName,
+      email: req.body.email || `${userName}@placeholder.com`,
+      passwordHash,
+      role: role || "user"
+    });
 
-    } catch (error) {
-        console.log(`Error in user route: ${JSON.stringify((error as Error).message)}`);
-        res.status(500).json({
-          message: `Error in user route: ${JSON.stringify((error as Error).message)}`
-        });
-      }
-})
+    res.status(201).json({
+      id: user._id,
+      userName: user.username,
+      role: user.role
+    });
 
-router.post("/login", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const user: any = userDb.find((savedUser: any) => {
-            if(savedUser.userName === req.body.userName){
-                return savedUser;
-            }
-            return null;
-        });
+  } catch (error) {
+    console.log(`Error in user create: ${(error as Error).message}`);
+    res.status(500).json({ message: (error as Error).message });
+  }
+});
 
-        if(!user){
-            throw new Error("Error logging in, unable to find username!!");
-        }
+// POST /user/login
+router.post("/login", async (req: Request, res: Response, _next: NextFunction) => {
+  try {
+    const { userName, userPassword } = req.body;
 
-        const compareResult = await bcrypt.compare(req.body.userPassword, user.userPassword);
+    const user = await User.findOne({ username: userName });
+    if (!user) {
+      res.status(401).json({ message: "Invalid credentials" });
+      return;
+    }
 
-        if(compareResult){
-            res.status(200).json({
-                message: "User logged in successfully!",
-                user: user
-            });
-        }else{
-            throw new Error("Error logging in, invalid password!");
-        }
+    const match = await bcrypt.compare(userPassword, user.passwordHash);
+    if (!match) {
+      res.status(401).json({ message: "Invalid credentials" });
+      return;
+    }
 
-    } catch (error) {
-        console.log(`Error in user route: ${JSON.stringify((error as Error).message)}`);
-        res.status(500).json({
-          message: `Error in user route: ${JSON.stringify((error as Error).message)}`
-        });
-      }
-})
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error("JWT_SECRET not configured");
+
+    const token = jwt.sign(
+      { sub: (user._id as any).toString(), role: user.role },
+      secret,
+      { expiresIn: "1h" }
+    );
+
+    res.status(200).json({
+      message: "User logged in successfully!",
+      token,
+      user: { id: user._id, userName: user.username, role: user.role }
+    });
+
+  } catch (error) {
+    console.log(`Error in user login: ${(error as Error).message}`);
+    res.status(500).json({ message: (error as Error).message });
+  }
+});
 
 export = router;
