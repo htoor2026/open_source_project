@@ -3,16 +3,25 @@
 A RESTful forum backend built with Node.js, TypeScript, Express, and MongoDB.
 
 ## Features
-- User registration and login with JWT
-- Create, edit, delete, and like posts
-- Comment on posts (full CRUD)
-- Admin analytics dashboard
-- Role-based access (user/admin)
-- 80%+ test coverage
+- User registration and login with JWT authentication
+- Create, edit, delete and like posts
+- Comment on posts with full CRUD
+- Admin analytics dashboard (stats + user list)
+- Role-based access control (user / admin / super user)
+- Winston logging on all routes
+- 80%+ test coverage with Jest + Supertest
 
 ## Tech Stack
-Node.js, TypeScript, Express, MongoDB, Jest
+- Node.js + TypeScript
+- Express.js
+- MongoDB + Mongoose
+- JWT + bcrypt
+- Winston logging
+- Jest + Supertest
 
-## Run locally
+## Run Locally
 npm install
 npm run serve
+
+## Run Tests
+npm test
