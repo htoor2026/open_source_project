@@ -4,7 +4,9 @@ import cors from 'cors';
 import userRoutes from "./ports/rest/routes/user";
 import postRoutes from "./ports/rest/routes/post";
 import commentRoutes from "./ports/rest/routes/comment";
+import adminRoutes from "./ports/rest/routes/admin";
 import { ConnectToDb } from "./infrastructure/mongodb/connection";
+import logger from "./config/logger";
 
 dotenv.config();
 
@@ -20,6 +22,7 @@ app.use("/healthcheck", (_req, res) => {
 app.use("/user", userRoutes);
 app.use("/posts", postRoutes);
 app.use("/posts/:postId/comments", commentRoutes);
+app.use("/admin", adminRoutes);
 
 export default app;
 
@@ -27,6 +30,6 @@ if (require.main === module) {
   ConnectToDb();
   const port = 3000;
   app.listen(port, () => {
-    console.log(`Now listening on port ${port}`);
+    logger.info(`Server running on port ${port}`);
   });
 }
